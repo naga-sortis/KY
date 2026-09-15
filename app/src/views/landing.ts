@@ -4,6 +4,9 @@ import { CURATED } from '../data/profiles';
 import { CHECKPOINTS, SECTION_DEFS, computeOverall } from '../data/sections';
 import { escapeHtml, toast } from '../lib/dom';
 import { addWaitlist, listWaitlist } from '../lib/store';
+import { mountAuthWidget } from '../components/authWidget';
+import { logEvent } from '../lib/cloud';
+import { ResumeParseError, extractTextFromFile, isSupportedResumeFile } from '../parse/resume';
 
 export function landingHtml(): string {
   return `${navHtml()}
@@ -41,9 +44,12 @@ function navHtml(): string {
         ${icon('history', 'h-4 w-4')} History
       </button>
     </nav>
-    <a href="#audit" class="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark">
-      Audit my profile ${icon('arrowRight', 'h-4 w-4')}
-    </a>
+    <div class="flex items-center gap-3">
+      <div id="auth-widget"></div>
+      <a href="#audit" class="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark">
+        Audit my profile ${icon('arrowRight', 'h-4 w-4')}
+      </a>
+    </div>
   </div>
 </header>`;
 }
@@ -177,17 +183,32 @@ function auditHtml(): string {
 
     <div data-panel="paste" class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-sm">
       <p class="text-sm leading-relaxed text-slate-600">
-        KY scores the text you paste — your headline, About, bullets, skills and education. Nothing is uploaded: it runs
-        in your browser and never contacts LinkedIn.
+        KY scores your headline, About, bullets, skills and education. Upload a resume or profile export, or paste the
+        text directly — either way it is read and scored in your own browser and never sent to LinkedIn.
       </p>
       <details class="mt-3 rounded-lg bg-slate-50 px-3 py-2">
         <summary class="cursor-pointer text-sm font-semibold text-brand">How do I copy my profile?</summary>
         <ol class="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-600">
           <li>Open your LinkedIn profile and press <kbd class="rounded border border-slate-300 bg-white px-1">Ctrl</kbd>+<kbd class="rounded border border-slate-300 bg-white px-1">A</kbd>, then <kbd class="rounded border border-slate-300 bg-white px-1">Ctrl</kbd>+<kbd class="rounded border border-slate-300 bg-white px-1">C</kbd>.</li>
-          <li>Or use <em>More → Save to PDF</em> and paste the text from the PDF.</li>
-          <li>Paste it below. Rough formatting is fine.</li>
+          <li>Or use <em>More → Save to PDF</em> and upload the PDF below, or paste the text from it.</li>
+          <li>A resume in PDF, DOCX or TXT works too — upload it and KY reads the text out of it for you.</li>
         </ol>
       </details>
+
+      <div class="mt-4">
+        <label for="resume-file" data-dropzone class="flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center transition hover:border-brand hover:bg-brand/5">
+          ${icon('fileText', 'h-5 w-5 text-slate-400')}
+          <span data-upload-label class="text-sm font-semibold text-slate-700">Upload a resume or profile export — PDF, DOCX or TXT</span>
+          <span class="text-xs text-slate-400">or drag a file here — read locally in your browser, never uploaded to a server</span>
+        </label>
+        <input id="resume-file" type="file" accept=".pdf,.docx,.txt,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="sr-only"/>
+        <p id="upload-status" class="mt-2 hidden text-xs font-medium"></p>
+      </div>
+
+      <div class="mt-4 flex items-center gap-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <span class="h-px flex-1 bg-slate-200"></span> or paste it directly <span class="h-px flex-1 bg-slate-200"></span>
+      </div>
+
       <form id="paste-form" class="mt-4" novalidate>
         <label class="sr-only" for="profile-text">Your profile text</label>
         <textarea id="profile-text" name="profile-text" rows="11" spellcheck="false"
@@ -208,7 +229,7 @@ function auditHtml(): string {
           ${icon('zap', 'h-5 w-5')} Run real audit
         </button>
         <p class="mt-3 flex items-start gap-1.5 text-xs text-slate-400">
-          ${icon('shield', 'h-3.5 w-3.5 mt-0.5 shrink-0')} Runs entirely in your browser. No account, no upload, no LinkedIn access.
+          ${icon('shield', 'h-3.5 w-3.5 mt-0.5 shrink-0')} Runs entirely in your browser. No account required, no file ever leaves your device, no LinkedIn access.
         </p>
       </form>
     </div>
@@ -424,7 +445,7 @@ function faqHtml(): string {
     <div class="mt-10 space-y-4">
       ${faqItem(
         'Is this using my real profile data?',
-        'It uses exactly what you paste, and nothing else. KY runs in your browser: it never contacts LinkedIn, never asks for your password and never uploads your text. Sections a text paste cannot prove — photo, banner, posting cadence — are excluded from the score rather than guessed, unless you tick the boxes that confirm them.'
+        'It uses exactly what you paste or upload, and nothing else. KY runs in your browser: it never contacts LinkedIn, never asks for your password, and an uploaded file is read locally — only the resulting text is used, and it is never sent to a server. Sections a text paste cannot prove — photo, banner, posting cadence — are excluded from the score rather than guessed, unless you tick the boxes that confirm them.'
       )}
       ${faqItem(
         'How is the score calculated?',
@@ -436,7 +457,11 @@ function faqHtml(): string {
       )}
       ${faqItem(
         'Where does my data go?',
-        'Nowhere. Audits, tracked keywords and your saved history live in your browser\'s local storage. Clearing your browser data clears them, and you can export everything as JSON or CSV from the History page first.'
+        'By default, nowhere: audits, tracked keywords and your saved history live in your browser\'s local storage. Clearing your browser data clears them, and you can export everything as JSON or CSV from the History page first. If you choose to sign in with Google or GitHub, your saved audits also sync to your account so you can see them on another device — that is opt-in, and your resume/profile text is never part of what gets synced or analysed.'
+      )}
+      ${faqItem(
+        'What does signing in add?',
+        'Nothing is required to run an audit — sign-in is entirely optional. Signing in with Google or GitHub lets your saved audit history follow you to another browser or device. It also lets KY log anonymous, aggregate usage stats (which mode was used, industry, score) to understand how the tool is used — never your resume or profile text, and never readable back from the client. See the README for the exact data model.'
       )}
       ${faqItem(
         'Are the rewrites written by AI?',
@@ -475,16 +500,20 @@ export interface LandingHandlers {
   onOpenPlan: () => void;
 }
 
-/** Attach all landing-page handlers. */
-export function wireLanding(root: HTMLElement, h: LandingHandlers): void {
+/** Attach all landing-page handlers. Returns a cleanup function for anything that outlives this render (e.g. the auth subscription). */
+export function wireLanding(root: HTMLElement, h: LandingHandlers): () => void {
   wireTabs(root);
   wirePasteForm(root, h.onPaste);
+  wireResumeUpload(root);
   wireUrlForm(root, h.onAudit);
   wireSamples(root, h.onAudit);
   wireWaitlist(root);
 
   root.querySelector<HTMLElement>('[data-open-history]')?.addEventListener('click', h.onHistory);
   root.querySelector<HTMLElement>('[data-open-plan]')?.addEventListener('click', h.onOpenPlan);
+
+  const authEl = root.querySelector<HTMLElement>('#auth-widget');
+  return authEl ? mountAuthWidget(authEl) : () => {};
 }
 
 function wireTabs(root: HTMLElement): void {
@@ -528,6 +557,57 @@ function wirePasteForm(root: HTMLElement, onPaste: (text: string, flags: Record<
       if (cb.dataset.flag) flags[cb.dataset.flag] = cb.checked;
     });
     onPaste(text, flags);
+  });
+}
+
+function wireResumeUpload(root: HTMLElement): void {
+  const input = root.querySelector<HTMLInputElement>('#resume-file');
+  const dropzone = root.querySelector<HTMLElement>('[data-dropzone]');
+  const status = root.querySelector<HTMLElement>('#upload-status');
+  const area = root.querySelector<HTMLTextAreaElement>('#profile-text');
+  if (!input || !dropzone || !status || !area) return;
+
+  const setStatus = (msg: string, tone: 'ok' | 'error' | 'busy'): void => {
+    status.textContent = msg;
+    status.classList.remove('hidden', 'text-emerald-600', 'text-rose-600', 'text-slate-500');
+    status.classList.add(tone === 'ok' ? 'text-emerald-600' : tone === 'error' ? 'text-rose-600' : 'text-slate-500');
+  };
+
+  const handleFile = async (file: File | undefined | null): Promise<void> => {
+    if (!file) return;
+    if (!isSupportedResumeFile(file)) {
+      setStatus('Unsupported file type. Upload a PDF, DOCX or TXT file.', 'error');
+      return;
+    }
+    setStatus(`Reading ${file.name}…`, 'busy');
+    try {
+      const text = await extractTextFromFile(file);
+      area.value = text;
+      setStatus(`Loaded ${file.name} (${text.length.toLocaleString()} characters). Review it below, then run the audit.`, 'ok');
+      logEvent('resume_uploaded', { ext: file.name.split('.').pop() ?? '', chars: text.length });
+      area.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (err) {
+      const msg = err instanceof ResumeParseError ? err.message : 'Could not read that file. Try pasting the text instead.';
+      setStatus(msg, 'error');
+    }
+  };
+
+  input.addEventListener('change', () => {
+    void handleFile(input.files?.[0]);
+    input.value = '';
+  });
+
+  dropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropzone.classList.add('border-brand', 'bg-brand/5');
+  });
+  dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('border-brand', 'bg-brand/5');
+  });
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('border-brand', 'bg-brand/5');
+    void handleFile(e.dataTransfer?.files?.[0]);
   });
 }
 

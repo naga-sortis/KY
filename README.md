@@ -1,12 +1,14 @@
 # KY — LinkedIn Profile Audit
 
-Score any LinkedIn profile in about a minute: paste the text, get a benchmarked score (0–100) across 8
-sections, real keyword coverage, rewrites for your weakest sections, and a score history that shows
-whether your edits actually worked.
+Score any LinkedIn profile in about a minute: upload a resume or paste the text, get a benchmarked score
+(0–100) across 8 sections, real keyword coverage, rewrites for your weakest sections, and a score history
+that shows whether your edits actually worked.
 
-**100% client-side.** No backend, no API keys, no auth, no network calls. Your profile text is parsed
-and scored in your own browser; audits and keyword tracking live in local storage. Nothing is uploaded,
-and KY never asks for your LinkedIn password.
+**Local-first, cloud-optional.** The audit itself still runs entirely in your browser — no account, no
+upload to a server, no network call — exactly as in Phase 2.5. Phase 3 adds two things on top, both
+opt-in: sign in with Google or GitHub to sync your audit history across devices, and (only when a
+Firebase project is configured for the build) anonymous, aggregate usage analytics. Neither your resume
+text nor your profile text is ever sent anywhere. See [Phase 3](#phase-3--accounts--analytics) below.
 
 ## Run it
 
@@ -18,20 +20,29 @@ npm run check    # tests + type-check + production build
 npm run pages    # type-check + build + publish to repo root (GitHub Pages)
 ```
 
-## Two ways in
+Sign-in and cloud sync are dormant until you set up a Firebase project — see
+[Phase 3](#phase-3--accounts--analytics). With no `.env.local`, `npm run dev` behaves exactly like
+Phase 2.5: fully local, no sign-in button rendered.
+
+## Three ways in
 
 | Mode | What it scores | Label |
 | --- | --- | --- |
+| **Upload a resume** | Text extracted client-side from a PDF, DOCX or TXT file — real parsing, real scores | `Real analysis` |
 | **Paste profile text** | The text you actually paste — real parsing, real scores | `Real analysis` |
 | **Profile URL** | Curated/seeded sample data, so you can explore the report without pasting anything | `Demo data` |
 
-Both are free and clearly labelled in the UI. The URL tab exists only so the demo never dead-ends.
+All three are free and clearly labelled in the UI. The URL tab exists only so the demo never dead-ends.
 
 ### Getting your profile text
 
-Open your LinkedIn profile → `Ctrl/Cmd + A` → `Ctrl/Cmd + C` → paste. Or use
-*More → Save to PDF* and paste the text out of the PDF. Rough formatting is fine; the parser is
-tolerant of layout differences.
+Fastest: drag a PDF, DOCX or TXT export onto the upload zone (LinkedIn's *More → Save to PDF*, or your
+resume file) — `app/src/parse/resume.ts` extracts the text with pdf.js / mammoth, entirely in your
+browser, and drops it into the same box below so you can review it before scoring. The file itself is
+never sent anywhere; only the extracted text feeds the audit.
+
+Or paste it manually: open your LinkedIn profile → `Ctrl/Cmd + A` → `Ctrl/Cmd + C` → paste. Rough
+formatting is fine either way; the parser is tolerant of layout differences.
 
 Photo, banner, custom URL, Featured and posting recency cannot be read from text, so the form has five
 optional checkboxes for them. **Unchecked sections are excluded from the score and the remaining
@@ -68,11 +79,34 @@ rewrite, share/copy/PDF loop, and two curated sample profiles plus seeded estima
 - **Waitlist and demo account** — persisted locally. There is no server, so nothing is sent anywhere.
 
 > Pro is a **preview, not a product**: billing is not connected, and the Pro features are unlocked so
-> they can be evaluated. The plan modal says so explicitly rather than faking a checkout.
+> they can be evaluated. The plan modal says so explicitly rather than faking a checkout. **Pricing and
+> billing are Phase 4** — not part of this build.
+
+### Phase 3 — accounts & analytics
+
+- **Sign in with Google or GitHub** (`app/src/lib/auth.ts`, `app/src/components/authWidget.ts`) via
+  Firebase Auth. Purely additive: every audit mode above still works fully signed-out. Signing in only
+  unlocks cross-device history.
+- **Resume/profile file upload** (`app/src/parse/resume.ts`) — PDF (pdf.js), DOCX (mammoth) and TXT,
+  parsed in the browser and dynamically imported so the ~1.5MB of parsing libraries only load for
+  visitors who actually use the upload zone.
+- **Cross-device audit history** (`app/src/lib/cloud.ts`) — when signed in, each saved audit mirrors to
+  `users/{uid}/audits/{id}` in Firestore, and a fresh sign-in pulls that history back down into local
+  storage. Local storage stays the source of truth for the current browser either way.
+- **Anonymous usage analytics** — aggregate events only (`audit_run`, `audit_saved`, `resume_uploaded`,
+  `sign_in`) written to Firestore's `analytics_events` collection: event type, mode, industry, score.
+  Never the resume or profile text itself. See `firestore.rules` for the access rules (events are
+  write-only from the client; nobody can read them back except from the Firebase console / a trusted
+  backend).
+- **Graceful degradation** — none of the above requires a Firebase project. Ship the app with no
+  `VITE_FIREBASE_*` env vars set and it behaves exactly like Phase 2.5: no sign-in button, no network
+  calls, fully local. See [Setup: Firebase (optional)](#setup-firebase-optional).
 
 ## Tech
 
-- **Vite + TypeScript (strict) + Tailwind CSS v4** — zero runtime dependencies.
+- **Vite + TypeScript (strict) + Tailwind CSS v4.** The scoring/rendering core has zero runtime
+  dependencies; Firebase (auth + Firestore) and the resume parsers (pdf.js, mammoth) are the only added
+  dependencies, and the parsers are dynamically imported so they never load for a paste-only visit.
 - Charts (score dial, radar, trend) are hand-rolled SVG — no chart library.
 - Scoring is deterministic: the same input always produces the same report. The Phase 1 URL mode seeds
   its estimates with FNV-1a + mulberry32.
@@ -93,6 +127,27 @@ The published site is committed at the repo root (`index.html`, `assets/`, `favi
 Source layout: the Vite app lives in `app/` (`root: 'app'`, `base: './'` so the site
 works under the `/KY/` sub-path). `dist/` is scratch output — never commit it.
 
+## Setup: Firebase (optional)
+
+Not required — skip this and everything above still works, fully local, no sign-in button. Set it up
+only if you want Google/GitHub sign-in and cross-device history:
+
+1. Create a project at [console.firebase.google.com](https://console.firebase.google.com).
+2. Add a Web App to it and copy the config values it gives you.
+3. **Authentication → Sign-in method** → enable **Google**, and enable **GitHub** (GitHub needs an OAuth
+   App at [github.com/settings/developers](https://github.com/settings/developers); set its callback URL
+   to the one Firebase shows on the GitHub provider screen).
+4. **Firestore Database** → create a database, then deploy the rules in `firestore.rules` (Firebase
+   console → Firestore → Rules, or `firebase deploy --only firestore:rules` with the Firebase CLI).
+5. Copy `.env.example` to `.env.local` and fill in the six `VITE_FIREBASE_*` values. `.env.local` is
+   git-ignored and Vite only exposes `VITE_`-prefixed vars to the client.
+6. If deploying to GitHub Pages via `npm run pages`, make sure `.env.local` (or equivalent env vars) is
+   present at build time — GitHub Pages serves the built output, not a live server, so the config is
+   baked in at build time, not read at runtime.
+
+None of these six values are secret in the sense of granting access on their own — they identify the
+Firebase project — but they're kept out of the committed history via `.env.local` regardless.
+
 ## Project structure
 
 ```
@@ -100,33 +155,40 @@ index.html, assets/, favicon.svg   # PUBLISHED site (built output, served by Git
 app/                               # Vite source (root: 'app')
   index.html
   src/
-    app.ts                 # view switching + audit flow + history persistence
+    app.ts                 # view switching + audit flow + history persistence + auth/cloud wiring
     analysis.ts            # analysis engine: demo (URL) and real (text) modes, deltas, alerts
     parse/
       profile.ts           # pasted text -> structured profile (roles, bullets, dates, skills)
       score.ts             # real per-section scoring from extracted signals
       keywords.ts          # industry detection + real keyword coverage
       rewrite.ts           # deterministic per-section rewrites
+      resume.ts            # PDF/DOCX/TXT -> plain text (pdf.js + mammoth, dynamically imported)
     data/
       sections.ts          # 8 audited sections, weights, issues, fixes
       industries.ts        # 8 industries: keywords + headline rewrites
       profiles.ts          # curated sample profiles (Sarah, Michael)
     components/
       charts.ts            # SVG score dial + radar chart + score trend
-      icons.ts             # inline SVG icon set
+      icons.ts             # inline SVG icon set + brand marks (Google, GitHub)
+      authWidget.ts        # header sign-in button / avatar menu
     lib/
       store.ts             # local storage: audits, tracked keywords, waitlist, account, export
+      firebase.ts          # Firebase init from env vars; no-ops when unconfigured
+      auth.ts               # Google/GitHub sign-in, sign-out, auth state
+      cloud.ts              # Firestore analytics events + cross-device audit sync
       dom.ts, random.ts, url.ts
     views/
-      landing.ts           # marketing page + tabbed audit form
+      landing.ts           # marketing page + tabbed audit form (upload / paste / URL) + auth widget
       scanning.ts          # animated analysis steps (wording differs per mode)
       report.ts            # report view + coverage + rewrites + print page
       history.ts           # saved audits, trend line, keyword tracking, export
-      plan.ts              # Pro plan + demo account modal
+      plan.ts              # Pro plan preview modal
 tests/                     # engine + view tests (node:test)
 scripts/
   run-tests.mjs            # bundles tests/*.test.ts with Vite, runs node --test
   sync-pages.mjs           # copies dist/ to the repo root
+firestore.rules            # Firestore security rules for analytics_events + per-user audits
+.env.example                # Firebase config template (copy to .env.local)
 dist/                      # scratch build output (git-ignored)
 ```
 
@@ -135,11 +197,14 @@ dist/                      # scratch build output (git-ignored)
 - **Phase 1:** interactive demo — shipped.
 - **Phase 2:** real analysis of pasted profile text, per-section rewrites, 1-page PDF — shipped.
 - **Phase 2.5:** audit history, score trends, keyword tracking with alerts, export — shipped.
-- **Phase 3:** hosted accounts + Stripe, weekly automated re-audits with email alerts, team/agency
+- **Phase 3:** resume/profile file upload, Google/GitHub sign-in, cross-device history and usage
+  analytics via Firestore — shipped.
+- **Phase 4 (next):** Stripe billing for Pro, weekly automated re-audits with email alerts, team/agency
   features (candidate pipelines), browser extension.
 
 ### Compliance
 
 KY does not scrape LinkedIn, does not use the LinkedIn API and never asks for credentials. Real
-analysis only ever runs on text the user supplies themselves. The URL tab is labelled demo mode and
-scores sample data. Not affiliated with LinkedIn Corporation.
+analysis only ever runs on text the user supplies themselves, whether pasted or extracted from an
+uploaded file. The URL tab is labelled demo mode and scores sample data. Sign-in and Firestore sync
+(Phase 3) are opt-in and never gate the audit itself. Not affiliated with LinkedIn Corporation.
