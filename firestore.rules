@@ -1,0 +1,26 @@
+rules_version = '2';
+
+// KY — Firestore rules (Phase 3).
+//
+// Two collections:
+//  - analytics_events: anonymous, aggregate usage events (no resume/profile text).
+//    Anyone (signed in or not) may create an event; nobody may read, update or
+//    delete from the client — analytics are read from the Firebase console / a
+//    trusted backend only.
+//  - users/{uid}/audits/{auditId}: a signed-in user's own saved audit history,
+//    mirrored from local storage for cross-device access. Only that user may
+//    read or write their own subtree.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /analytics_events/{eventId} {
+      allow create: if request.resource.data.keys().hasAll(['type', 'createdAt'])
+                     && request.resource.data.type is string
+                     && request.resource.data.size() < 20;
+      allow read, update, delete: if false;
+    }
+
+    match /users/{uid}/audits/{auditId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

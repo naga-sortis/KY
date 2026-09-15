@@ -1,14 +1,13 @@
 import { icon } from '../components/icons';
-import { getAccount, setAccount } from '../lib/store';
-import { toast } from '../lib/dom';
+import { authAvailable } from '../lib/auth';
 
 /**
- * Pro plan + demo account.
+ * Pro plan preview.
  *
- * Deliberately honest: this build has no server and no payment provider, so
- * nothing here pretends to charge anyone. "Pro" simply unlocks the tracking
- * features that already run locally, and the account is a name stored in the
- * visitor's own browser.
+ * Deliberately honest: billing is not connected, so nothing here pretends to
+ * charge anyone. "Pro" simply unlocks the tracking features that already run
+ * locally. Real accounts (Google/GitHub sign-in) live in the header — this
+ * modal no longer fakes one.
  */
 
 const PRO_FEATURES = [
@@ -19,14 +18,12 @@ const PRO_FEATURES = [
 ];
 
 const NOT_INCLUDED = [
-  'Hosted accounts — your data stays in this browser',
   'Weekly automated re-audits and email alerts',
   'Stripe billing — no payment provider is connected',
-  'Team and agency features (Phase 3)',
+  'Team and agency features (Phase 4)',
 ];
 
 export function openPlanModal(): void {
-  const account = getAccount();
   const el = document.createElement('div');
   el.id = 'plan-modal';
   el.className = 'fixed inset-0 z-50 grid place-items-center bg-ink/60 p-4 backdrop-blur-sm';
@@ -54,27 +51,14 @@ export function openPlanModal(): void {
     </ul>
 
     <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
-      <h3 class="text-sm font-bold text-slate-900">${account ? 'Your demo account' : 'Create a demo account'}</h3>
+      <h3 class="text-sm font-bold text-slate-900">Account</h3>
       <p class="mt-1 text-xs leading-relaxed text-slate-500">
         ${
-          account
-            ? `Signed in locally as ${account.name || account.email}. No password, no server — the name lives in this browser.`
-            : 'A name and email, kept in your browser. There is no login, no password and no verification email.'
+          authAvailable()
+            ? 'Sign in with Google or GitHub from the top of the page to sync your saved audits across devices. It is optional — every audit mode works fully signed out.'
+            : 'Sign-in is not configured for this build (no Firebase project). Every audit mode still works fully — this only affects cross-device history.'
         }
       </p>
-      ${
-        account
-          ? `<button type="button" data-signout class="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-rose-300 hover:text-rose-600">
-        ${icon('logout', 'h-3.5 w-3.5')} Sign out of the demo account
-      </button>`
-          : `<form id="account-form" class="mt-3 flex flex-col gap-2 sm:flex-row">
-        <label class="sr-only" for="account-name">Name</label>
-        <input id="account-name" type="text" placeholder="Your name" class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"/>
-        <label class="sr-only" for="account-email">Email</label>
-        <input id="account-email" type="email" placeholder="you@example.com" class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"/>
-        <button type="submit" class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-dark">Save</button>
-      </form>`
-      }
     </div>
   </div>
 
@@ -94,25 +78,5 @@ function wire(el: HTMLElement): void {
   el.querySelectorAll<HTMLElement>('[data-close]').forEach((b) => b.addEventListener('click', close));
   el.addEventListener('click', (e) => {
     if (e.target === el) close();
-  });
-
-  el.querySelector<HTMLElement>('[data-signout]')?.addEventListener('click', () => {
-    setAccount(null);
-    toast('Demo account cleared from this browser');
-    close();
-  });
-
-  const form = el.querySelector<HTMLFormElement>('#account-form');
-  form?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const name = el.querySelector<HTMLInputElement>('#account-name')?.value.trim() ?? '';
-    const email = el.querySelector<HTMLInputElement>('#account-email')?.value.trim() ?? '';
-    if (!name && !email) {
-      toast('Add a name or an email first.');
-      return;
-    }
-    setAccount({ name, email, plan: 'pro', createdAt: new Date().toISOString() });
-    toast('Saved to this browser — Pro is unlocked');
-    close();
   });
 }

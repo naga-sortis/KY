@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "KY \u2014 LinkedIn Profile Audit. Phase 1 interactive demo (B2C).",
+  "description": "KY — LinkedIn Profile Audit. Phase 1 interactive demo (B2C).",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -18,5 +18,10 @@
     "tailwindcss": "^4.1.8",
     "typescript": "~5.8.3",
     "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "firebase": "^12.19.0",
+    "mammoth": "^1.12.3",
+    "pdfjs-dist": "^6.3.289"
   }
 }
