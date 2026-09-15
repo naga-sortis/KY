@@ -102,6 +102,7 @@ function showReport(result: AnalysisResult): void {
         onRestart: renderLanding,
         onHistory: renderHistory,
         onSave: (r) => saveResult(r),
+        onLinkedInDemo: (url) => handleAudit(url),
       });
       window.scrollTo(0, 0);
     });

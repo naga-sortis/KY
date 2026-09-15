@@ -1,8 +1,10 @@
-# KY — LinkedIn Profile Audit
+# KY — Resume & LinkedIn Profile Audit
 
-Score any LinkedIn profile in about a minute: upload a resume or paste the text, get a benchmarked score
-(0–100) across 8 sections, real keyword coverage, rewrites for your weakest sections, and a score history
-that shows whether your edits actually worked.
+Upload a resume — no LinkedIn API, no OAuth, no permissions — and get a benchmarked score (0–100) across
+8 sections, real keyword coverage against a detailed industry rubric, rewrites for your weakest sections,
+and a score history that shows whether your edits actually worked. If your resume contains a LinkedIn
+profile link, KY offers a (clearly labelled demo-data) LinkedIn audit for it too, alongside your real
+resume result — it never replaces it.
 
 **Local-first, cloud-optional.** The audit itself still runs entirely in your browser — no account, no
 upload to a server, no network call — exactly as in Phase 2.5. Phase 3 adds two things on top, both
@@ -28,18 +30,21 @@ Phase 2.5: fully local, no sign-in button rendered.
 
 | Mode | What it scores | Label |
 | --- | --- | --- |
-| **Upload a resume** | Text extracted client-side from a PDF, DOCX or TXT file — real parsing, real scores | `Real analysis` |
-| **Paste profile text** | The text you actually paste — real parsing, real scores | `Real analysis` |
-| **Profile URL** | Curated/seeded sample data, so you can explore the report without pasting anything | `Demo data` |
+| **Upload a resume** (primary/default tab) | Text extracted client-side from a PDF, DOCX or TXT resume — real parsing, real scores | `Real analysis` |
+| **Paste text** | The text you actually paste — real parsing, real scores | `Real analysis` |
+| **LinkedIn URL** | Curated/seeded sample data, so you can explore the report without pasting anything | `Demo data` |
 
-All three are free and clearly labelled in the UI. The URL tab exists only so the demo never dead-ends.
+Why resume-first: a real LinkedIn audit would need LinkedIn's API and OAuth permissions KY deliberately
+does not request (see [Compliance](#compliance)). A resume needs none of that — upload it and KY reads it
+entirely client-side. All three modes are free and clearly labelled in the UI; the LinkedIn URL tab exists
+only so the demo never dead-ends for someone who wants to see a full report without uploading anything.
 
-### Getting your profile text
+### Getting your resume/profile text in
 
-Fastest: drag a PDF, DOCX or TXT export onto the upload zone (LinkedIn's *More → Save to PDF*, or your
-resume file) — `app/src/parse/resume.ts` extracts the text with pdf.js / mammoth, entirely in your
-browser, and drops it into the same box below so you can review it before scoring. The file itself is
-never sent anywhere; only the extracted text feeds the audit.
+Fastest: drag a PDF, DOCX or TXT resume onto the upload zone (also works with LinkedIn's own
+*More → Save to PDF* export) — `app/src/parse/resume.ts` extracts the text with pdf.js / mammoth, entirely
+in your browser, and drops it into the same box below so you can review it before scoring. The file itself
+is never sent anywhere; only the extracted text feeds the audit.
 
 Or paste it manually: open your LinkedIn profile → `Ctrl/Cmd + A` → `Ctrl/Cmd + C` → paste. Rough
 formatting is fine either way; the parser is tolerant of layout differences.
@@ -47,6 +52,16 @@ formatting is fine either way; the parser is tolerant of layout differences.
 Photo, banner, custom URL, Featured and posting recency cannot be read from text, so the form has five
 optional checkboxes for them. **Unchecked sections are excluded from the score and the remaining
 weights are re-normalised** — KY does not guess at things it cannot see.
+
+### If your resume/paste contains a LinkedIn link
+
+`analysis.ts`'s `detectLinkedInUrl()` scans the extracted/pasted text for a `linkedin.com/in/...` (or
+`/pub/...`) link. If found, the report shows a banner offering a **demo** LinkedIn audit for that URL —
+one click reuses the existing seeded/curated demo engine (`analyze()` / `data/profiles.ts`), the same
+engine the LinkedIn URL tab already uses. This is explicitly *not* a real fetch of that profile — KY has
+no LinkedIn API access and doesn't want any — it's a convenience so you don't have to retype the URL into
+the demo tab yourself. If no LinkedIn link is found, nothing changes: the resume result stands on its own,
+which is the common case and the one this build optimises for.
 
 ## What shipped
 
@@ -87,9 +102,19 @@ rewrite, share/copy/PDF loop, and two curated sample profiles plus seeded estima
 - **Sign in with Google or GitHub** (`app/src/lib/auth.ts`, `app/src/components/authWidget.ts`) via
   Firebase Auth. Purely additive: every audit mode above still works fully signed-out. Signing in only
   unlocks cross-device history.
-- **Resume/profile file upload** (`app/src/parse/resume.ts`) — PDF (pdf.js), DOCX (mammoth) and TXT,
-  parsed in the browser and dynamically imported so the ~1.5MB of parsing libraries only load for
-  visitors who actually use the upload zone.
+- **Resume/profile file upload, resume-first** (`app/src/parse/resume.ts`) — PDF (pdf.js), DOCX (mammoth)
+  and TXT, parsed in the browser and dynamically imported so the ~1.5MB of parsing libraries only load for
+  visitors who actually use the upload zone. Upload is the default/primary tab specifically because a real
+  LinkedIn audit would need LinkedIn API access and OAuth permissions KY does not request — a resume
+  needs none of that.
+- **LinkedIn-link detection & redirect** (`analysis.ts`'s `detectLinkedInUrl`) — if the uploaded/pasted
+  text contains a `linkedin.com/in/...` link, the report offers a one-click **demo** LinkedIn audit for it
+  (reusing the existing seeded/curated demo engine) alongside — never instead of — the real resume result.
+  No real profile is fetched; there is still no LinkedIn API integration anywhere in this app.
+- **Detailed industry rubrics** (`app/src/data/industries.ts`) — each of the 8 industries now carries a
+  `description`: a written "what a strong profile/resume in this field looks like" benchmark, plus an
+  expanded (~14-term) keyword list. This is the standard both industry detection and keyword-gap analysis
+  score resumes/profiles against, and it's shown directly in the report's Keyword coverage card.
 - **Cross-device audit history** (`app/src/lib/cloud.ts`) — when signed in, each saved audit mirrors to
   `users/{uid}/audits/{id}` in Firestore, and a fresh sign-in pulls that history back down into local
   storage. Local storage stays the source of truth for the current browser either way.
@@ -197,14 +222,18 @@ dist/                      # scratch build output (git-ignored)
 - **Phase 1:** interactive demo — shipped.
 - **Phase 2:** real analysis of pasted profile text, per-section rewrites, 1-page PDF — shipped.
 - **Phase 2.5:** audit history, score trends, keyword tracking with alerts, export — shipped.
-- **Phase 3:** resume/profile file upload, Google/GitHub sign-in, cross-device history and usage
+- **Phase 3:** resume upload (now the primary path — no LinkedIn API needed), LinkedIn-link detection with
+  a demo-audit redirect, detailed industry rubrics, Google/GitHub sign-in, cross-device history and usage
   analytics via Firestore — shipped.
 - **Phase 4 (next):** Stripe billing for Pro, weekly automated re-audits with email alerts, team/agency
   features (candidate pipelines), browser extension.
 
 ### Compliance
 
-KY does not scrape LinkedIn, does not use the LinkedIn API and never asks for credentials. Real
-analysis only ever runs on text the user supplies themselves, whether pasted or extracted from an
-uploaded file. The URL tab is labelled demo mode and scores sample data. Sign-in and Firestore sync
-(Phase 3) are opt-in and never gate the audit itself. Not affiliated with LinkedIn Corporation.
+KY does not scrape LinkedIn, does not use the LinkedIn API, requests no LinkedIn OAuth permissions and
+never asks for LinkedIn credentials. This is exactly why resume upload is the primary path in Phase 3: it
+gets a real, immediate audit without any of that. Real analysis only ever runs on text the user supplies
+themselves, whether pasted or extracted from an uploaded file. The LinkedIn URL tab — and the one-click
+"demo LinkedIn audit" offered when a resume contains a LinkedIn link — are both explicitly labelled demo
+data, seeded/curated rather than fetched. Sign-in and Firestore sync (Phase 3) are opt-in and never gate
+the audit itself. Not affiliated with LinkedIn Corporation.
