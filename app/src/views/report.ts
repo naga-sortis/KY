@@ -23,6 +23,7 @@ export interface ReportHandlers {
   onRestart: () => void;
   onHistory: () => void;
   onSave: (r: AnalysisResult) => void;
+  onLinkedInDemo: (url: string) => void;
 }
 
 function barClass(score: number): string {
@@ -141,6 +142,7 @@ export function reportHtml(r: AnalysisResult): string {
   <main class="screen-only mx-auto max-w-6xl px-4 py-8">
     <p class="no-print text-xs text-slate-500">${sourceNote}. Generated ${date}. Not affiliated with LinkedIn.</p>
 
+    ${linkedInFoundCard(r)}
     ${alertsCard(r)}
 
     <section class="animate-rise rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
@@ -229,6 +231,21 @@ export function reportHtml(r: AnalysisResult): string {
 
   ${printSummary(r)}
 </div>`;
+}
+
+/** Phase 3: a LinkedIn link found inside the uploaded/pasted text. Offers the (demo-data) URL flow as well — never replaces this real result. */
+function linkedInFoundCard(r: AnalysisResult): string {
+  if (!r.linkedInUrl) return '';
+  return `<section class="no-print animate-rise mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3">
+  <p class="flex items-center gap-2 text-sm text-sky-900">
+    ${icon('link', 'h-4 w-4 shrink-0 text-sky-600')}
+    Found a LinkedIn profile link in your text: <span class="font-semibold">${escapeHtml(r.linkedInUrl)}</span>
+  </p>
+  <button type="button" data-action="linkedin-demo" data-linkedin-url="${escapeHtml(r.linkedInUrl)}"
+    class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-sky-300 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-100">
+    See a demo LinkedIn audit for it too ${icon('arrowRight', 'h-3.5 w-3.5')}
+  </button>
+</section>`;
 }
 
 function alertsCard(r: AnalysisResult): string {
@@ -349,6 +366,10 @@ function keywordCoverageCard(r: AnalysisResult): string {
   </div>
   <p class="mt-0.5 text-sm text-slate-500">
     Every ${escapeHtml(kw.industry.label)} term recruiters search, actually searched for in the text you pasted.
+  </p>
+  <p class="mt-3 rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs leading-relaxed text-slate-500">
+    <span class="font-semibold text-slate-600">What KY benchmarks ${escapeHtml(kw.industry.label)} against:</span>
+    ${escapeHtml(kw.industry.description)}
   </p>
 
   ${
@@ -606,6 +627,9 @@ export function wireReport(root: HTMLElement, r: AnalysisResult, h: ReportHandle
         if (!w) return;
         const ok = await copyText(w.after);
         toast(ok ? 'Rewrite copied' : 'Copy failed');
+      } else if (a === 'linkedin-demo') {
+        const url = btn.dataset.linkedinUrl;
+        if (url) h.onLinkedInDemo(url);
       }
     });
   });

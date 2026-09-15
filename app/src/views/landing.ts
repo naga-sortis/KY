@@ -107,14 +107,14 @@ function heroHtml(): string {
   <div class="relative mx-auto grid max-w-6xl items-center gap-14 px-4 pb-24 pt-16 sm:pt-20 lg:grid-cols-2 lg:pt-24">
     <div class="animate-rise">
       <span class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-xs font-semibold text-slate-200">
-        ${icon('sparkles', 'h-3.5 w-3.5 text-sky-400')} Phase 2 &middot; Real analysis &middot; Free &middot; No sign-up
+        ${icon('sparkles', 'h-3.5 w-3.5 text-sky-400')} Real analysis &middot; No LinkedIn API &middot; Free &middot; No sign-up required
       </span>
       <h1 class="mt-6 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">
-        Your LinkedIn profile,<br/>
+        Your resume or profile,<br/>
         <span class="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">scored in 60 seconds.</span>
       </h1>
       <p class="mt-5 max-w-xl text-lg leading-relaxed text-slate-300">
-        Paste your profile text and KY scores it for real — headline, About, bullets, skills and education across ${CHECKPOINTS}+ checkpoints. Then it rewrites your weakest sections and tracks your score over time.
+        Upload a resume — no LinkedIn API, no permissions, no password — and KY scores it for real: headline, About, bullets, skills and education across ${CHECKPOINTS}+ checkpoints. Find a LinkedIn link in it and KY offers a demo audit of that profile too. Then it rewrites your weakest sections and tracks your score over time.
       </p>
       <div class="mt-8 flex flex-wrap gap-3">
         <a href="#audit" class="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3.5 font-semibold text-white shadow-lg shadow-brand/30 transition hover:bg-brand-dark">
@@ -172,13 +172,13 @@ function auditHtml(): string {
   return `<section id="audit" class="bg-white py-20 sm:py-24">
   <div class="mx-auto max-w-3xl animate-rise px-4">
     <div class="text-center">
-      <h2 class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Paste a profile. Get your report.</h2>
-      <p class="mt-3 text-lg text-slate-600">No login, no LinkedIn password. Two ways in — pick one.</p>
+      <h2 class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Upload a resume. Get your report.</h2>
+      <p class="mt-3 text-lg text-slate-600">No LinkedIn API, no login, no LinkedIn password required. Upload a resume — or paste text, or try the LinkedIn URL demo.</p>
     </div>
 
     <div class="mx-auto mt-8 flex max-w-lg gap-1 rounded-xl bg-slate-100 p-1">
-      ${auditTab('paste', 'Paste profile text', 'Real analysis')}
-      ${auditTab('url', 'Profile URL', 'Demo data')}
+      ${auditTab('paste', 'Upload resume', 'Real analysis')}
+      ${auditTab('url', 'LinkedIn URL', 'Demo data')}
     </div>
 
     <div data-panel="paste" class="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-sm">
@@ -278,10 +278,10 @@ function howHtml(): string {
   <div class="mx-auto max-w-6xl px-4">
     <div class="mx-auto max-w-2xl text-center">
       <h2 class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">How it works</h2>
-      <p class="mt-3 text-lg text-slate-600">Three steps. No account, no LinkedIn login, nothing to install, nothing leaves your browser.</p>
+      <p class="mt-3 text-lg text-slate-600">Three steps. No LinkedIn API, no account required, nothing to install, nothing leaves your browser.</p>
     </div>
     <div class="mt-12 grid gap-6 md:grid-cols-3">
-      ${stepCard('1', 'paste', 'Paste your profile text', 'Copy your profile and paste it in. It is scored in your browser — no upload, no LinkedIn login, no credentials.')}
+      ${stepCard('1', 'fileText', 'Upload your resume', 'A PDF, DOCX or TXT resume, or your pasted profile text — read and scored in your own browser. No LinkedIn API, no login, no credentials.')}
       ${stepCard('2', 'zap', `Runs ${CHECKPOINTS}+ checkpoints`, 'Headline, About, experience, education, skills, activity, media and presence. Sections a text paste cannot prove are left out of the score instead of guessed.')}
       ${stepCard('3', 'edit', 'Get rewrites, not just scores', 'A benchmarked score, your real keyword gaps, rewrites for your weakest sections, and a score history that shows whether the changes worked.')}
     </div>
@@ -410,8 +410,8 @@ function waitlistHtml(): string {
   <div class="mx-auto max-w-2xl px-4 text-center">
     <h2 class="text-3xl font-extrabold tracking-tight">Get the Pro launch</h2>
     <p class="mt-3 text-lg text-slate-300">
-      Phase 2 is live. Pro — hosted accounts, weekly re-audits and Stripe billing — is next. Waitlist members get early
-      access and 3 months free.
+      Resume upload, real analysis and (optional) sign-in are live. Pro billing — weekly re-audits with email alerts and
+      Stripe billing — is next. Waitlist members get early access and 3 months free.
     </p>
     <form id="waitlist-form" class="mx-auto mt-8 flex max-w-md flex-col gap-3 sm:flex-row" novalidate>
       <label class="sr-only" for="waitlist-email">Email address</label>

@@ -78,6 +78,18 @@ export interface AnalysisResult {
   parsed: ParsedProfile | null;
   alerts: Alert[];
   delta: Delta | null;
+  /** A LinkedIn profile URL found inside pasted/uploaded text (Phase 3), if any. Text mode only. */
+  linkedInUrl: string | null;
+}
+
+const LINKEDIN_URL_RE = /(https?:\/\/)?(www\.)?linkedin\.com\/(in|pub)\/[a-zA-Z0-9\-_%]+\/?/i;
+
+/** Looks for a LinkedIn profile link inside arbitrary text (e.g. a resume) and normalises it to a full URL. */
+export function detectLinkedInUrl(text: string): string | null {
+  const match = text.match(LINKEDIN_URL_RE);
+  if (!match) return null;
+  const found = match[0].replace(/[.,;]+$/, '');
+  return found.startsWith('http') ? found : `https://${found}`;
 }
 
 /**
@@ -89,7 +101,18 @@ export interface AnalysisResult {
 export function analyze(input: ParsedUrl): AnalysisResult {
   const curated = CURATED.find((c) => c.slug === input.slug);
   const base = curated ? fromCurated(curated, input) : fromEstimated(input);
-  return { ...base, keywordReport: null, rewrites: [], measuredCount: 8, excluded: [], signals: [], parsed: null, alerts: [], delta: null };
+  return {
+    ...base,
+    keywordReport: null,
+    rewrites: [],
+    measuredCount: 8,
+    excluded: [],
+    signals: [],
+    parsed: null,
+    alerts: [],
+    delta: null,
+    linkedInUrl: null,
+  };
 }
 
 /**
@@ -97,6 +120,7 @@ export function analyze(input: ParsedUrl): AnalysisResult {
  */
 export function analyzeText(raw: string, flags: Partial<ProfileFlags> = {}, url = ''): AnalysisResult {
   const parsed = parseProfileText(raw, { flags });
+  const linkedInUrl = detectLinkedInUrl(raw);
   const detected = detectIndustry(raw);
   const industry = detected.industry;
   const scored = scoreProfile(parsed, industry);
@@ -151,6 +175,7 @@ export function analyzeText(raw: string, flags: Partial<ProfileFlags> = {}, url 
     parsed,
     alerts: [],
     delta: null,
+    linkedInUrl,
   };
 }
 
@@ -331,6 +356,7 @@ function fromCurated(c: CuratedProfile, input: ParsedUrl): AnalysisResult {
     parsed: null,
     alerts: [],
     delta: null,
+    linkedInUrl: null,
   };
 }
 
@@ -389,5 +415,6 @@ function fromEstimated(input: ParsedUrl): AnalysisResult {
     parsed: null,
     alerts: [],
     delta: null,
+    linkedInUrl: null,
   };
 }

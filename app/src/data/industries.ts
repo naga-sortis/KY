@@ -7,6 +7,13 @@ export interface HeadlinePair {
 export interface Industry {
   key: string;
   label: string;
+  /**
+   * The benchmark rubric for this industry — what a strong profile or resume
+   * looks like. Shown in the report as the standard a resume/profile is being
+   * measured against, and used as scoring/detection context before real
+   * analysis runs (Phase 3).
+   */
+  description: string;
   keywords: string[];
   headlines: HeadlinePair[];
 }
@@ -15,6 +22,8 @@ export const INDUSTRIES: Industry[] = [
   {
     key: 'marketing',
     label: 'Marketing',
+    description:
+      'A strong Marketing profile or resume names the channels actually owned (SEO, paid, lifecycle, brand), ties every campaign to a measurable outcome (traffic, CAC, conversion, pipeline), and shows fluency with the tools recruiters search for (GA4, HubSpot, Looker) rather than listing "digital marketing" as a buzzword.',
     keywords: [
       'SEO',
       'Content Strategy',
@@ -24,6 +33,12 @@ export const INDUSTRIES: Industry[] = [
       'A/B Testing',
       'Brand Strategy',
       'Lifecycle Marketing',
+      'Paid Media',
+      'HubSpot',
+      'Marketing Automation',
+      'Demand Generation',
+      'Attribution',
+      'Positioning',
     ],
     headlines: [
       {
@@ -41,6 +56,8 @@ export const INDUSTRIES: Industry[] = [
   {
     key: 'software',
     label: 'Software',
+    description:
+      'A strong Software profile or resume states the stack and scale you actually operate at (languages, cloud, distributed systems), attaches an ownership outcome to each role (uptime, latency, throughput, incidents resolved), and shows technical leadership (design docs, mentoring, on-call) rather than just a list of frameworks.',
     keywords: [
       'System Design',
       'AWS',
@@ -50,6 +67,12 @@ export const INDUSTRIES: Industry[] = [
       'Incident Response',
       'Mentoring',
       'Open Source',
+      'CI/CD',
+      'Microservices',
+      'API Design',
+      'Code Review',
+      'Scalability',
+      'Cloud Architecture',
     ],
     headlines: [
       {
@@ -67,6 +90,8 @@ export const INDUSTRIES: Industry[] = [
   {
     key: 'sales',
     label: 'Sales',
+    description:
+      'A strong Sales profile or resume states the deal size, segment and quota you carried (SMB vs. enterprise, ACV, quota attainment), names the CRM and methodology you run (Salesforce, MEDDIC, discovery), and proves performance with a number every recruiter checks first — quota percentage or revenue closed.',
     keywords: [
       'Pipeline Management',
       'Salesforce',
@@ -76,6 +101,12 @@ export const INDUSTRIES: Industry[] = [
       'Enterprise Sales',
       'Discovery',
       'Negotiation',
+      'Quota Attainment',
+      'Account Management',
+      'MEDDIC',
+      'Prospecting',
+      'Territory Planning',
+      'Renewals',
     ],
     headlines: [
       {
@@ -93,6 +124,8 @@ export const INDUSTRIES: Industry[] = [
   {
     key: 'product',
     label: 'Product',
+    description:
+      'A strong Product profile or resume names the product surface owned (0-to-1, growth, platform), shows a research/data method (user research, A/B testing, SQL, cohorts) behind every decision, and reports outcomes in user or business metrics (activation, retention, revenue) rather than feature ship lists.',
     keywords: [
       'Roadmapping',
       'A/B Testing',
@@ -102,6 +135,12 @@ export const INDUSTRIES: Industry[] = [
       'Cohort Analysis',
       'GTM',
       'OKRs',
+      'Prioritization',
+      'Stakeholder Management',
+      'Product Analytics',
+      'Discovery',
+      'North Star Metric',
+      'Experimentation',
     ],
     headlines: [
       {
@@ -119,6 +158,8 @@ export const INDUSTRIES: Industry[] = [
   {
     key: 'design',
     label: 'Design',
+    description:
+      'A strong Design profile or resume names the discipline and domain (product, brand, motion; fintech, mobile), shows craft with the tools recruiters expect (Figma, prototyping, design systems), and proves impact with shipped volume and validated results (usability testing, accessibility, conversion lift) rather than a portfolio link alone.',
     keywords: [
       'Design Systems',
       'Figma',
@@ -128,6 +169,12 @@ export const INDUSTRIES: Industry[] = [
       'Motion Design',
       'Design Tokens',
       'Developer Handoff',
+      'User Research',
+      'Wireframing',
+      'Information Architecture',
+      'Visual Design',
+      'Design Ops',
+      'Interaction Design',
     ],
     headlines: [
       {
@@ -145,6 +192,8 @@ export const INDUSTRIES: Industry[] = [
   {
     key: 'finance',
     label: 'Finance',
+    description:
+      'A strong Finance profile or resume names the specialty (FP&A, RevOps, M&A, controllership), states the scale owned (ARR, budget size, headcount modeled) and shows fluency with the frameworks and tools finance recruiters search for (financial modeling, IFRS/GAAP, Excel/SQL) rather than a generic "finance professional" label.',
     keywords: [
       'FP&A',
       'P&L',
@@ -154,6 +203,12 @@ export const INDUSTRIES: Industry[] = [
       'IFRS',
       'Cash Flow',
       'Unit Economics',
+      'Financial Modeling',
+      'Forecasting',
+      'GAAP',
+      'Variance Analysis',
+      'Treasury',
+      'Investor Relations',
     ],
     headlines: [
       {
@@ -171,6 +226,8 @@ export const INDUSTRIES: Industry[] = [
   {
     key: 'operations',
     label: 'Operations',
+    description:
+      'A strong Operations profile or resume names the function owned (supply chain, logistics, RevOps, facilities), quantifies scope (hubs, volume, headcount, budget) and proves impact with efficiency or cost numbers (cycle time, cost reduction, error rate) rather than a list of responsibilities.',
     keywords: [
       'Process Improvement',
       'Lean',
@@ -180,6 +237,12 @@ export const INDUSTRIES: Industry[] = [
       'KPI Dashboards',
       'SOPs',
       'Capacity Planning',
+      'Six Sigma',
+      'Inventory Management',
+      'Logistics',
+      'Cross-Functional Leadership',
+      'Cost Reduction',
+      'Change Management',
     ],
     headlines: [
       {
@@ -197,6 +260,8 @@ export const INDUSTRIES: Industry[] = [
   {
     key: 'education',
     label: 'Education',
+    description:
+      'A strong Education profile or resume names the subject, level and program owned (AP/IB, K-12, EdTech), shows a teaching or design method (differentiated instruction, curriculum design, data-driven coaching) and reports a student or program outcome (pass rate, adoption, growth) rather than years of tenure alone.',
     keywords: [
       'Curriculum Design',
       'IEP',
@@ -206,6 +271,12 @@ export const INDUSTRIES: Industry[] = [
       'Data Literacy',
       'AP/IB',
       'Coaching',
+      'Student Assessment',
+      'Instructional Design',
+      'Professional Development',
+      'Learning Outcomes',
+      'Special Education',
+      'Curriculum Alignment',
     ],
     headlines: [
       {
