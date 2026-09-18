@@ -1,0 +1,31 @@
+# Default demo stack: SQLite + local filesystem storage, no external services
+# to provision. Fewest moving parts, fewest ways to break during a demo.
+#
+# To validate the S3-compatible storage path that Azure and Zadara both share
+# (see backend/app/storage.py and DEPLOY.md), run with the s3 overlay instead:
+#   docker compose -f docker-compose.yml -f docker-compose.s3.yml up --build
+
+services:
+  api:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - api-data:/data
+    environment:
+      DATABASE_URL: sqlite:////data/provenance.db
+      LOCAL_STORAGE_ROOT: /data/files
+      STORAGE_BACKEND: local
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_API_URL: http://localhost:8000
+    ports:
+      - "5174:80"
+    depends_on:
+      - api
+
+volumes:
+  api-data:

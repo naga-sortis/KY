@@ -1,0 +1,31 @@
+# Overlay that swaps local filesystem storage for MinIO -- an S3-compatible
+# server you can run anywhere, standing in for both Azure Blob (via its
+# S3-compatibility gateway) and Zadara's native S3-compatible zIOS storage.
+# The application code is identical either way; only these env vars change.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.s3.yml up --build
+
+services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web console
+    environment:
+      MINIO_ROOT_USER: provenance
+      MINIO_ROOT_PASSWORD: provenance-dev-only
+    volumes:
+      - minio-data:/data
+
+  api:
+    environment:
+      STORAGE_BACKEND: s3
+      S3_BUCKET: provenance-resumes
+      S3_ENDPOINT: http://minio:9000
+      AWS_ACCESS_KEY_ID: provenance
+      AWS_SECRET_ACCESS_KEY: provenance-dev-only
+    depends_on:
+      - minio
+
+volumes:
+  minio-data:

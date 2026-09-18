@@ -1,0 +1,16 @@
+{
+  "name": "provenance-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Provenance — Phase 1 demo UI: create a job, upload candidates, view ranked matches.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
+  }
+}
