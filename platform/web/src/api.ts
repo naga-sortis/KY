@@ -23,6 +23,10 @@ export interface Candidate {
   years_experience: number | null;
   industry_key: string | null;
   industry_label: string | null;
+  currently_employed: boolean;
+  current_role_skills: string[];
+  current_role_industry_key: string | null;
+  current_role_industry_label: string | null;
   created_at: string;
 }
 
@@ -34,6 +38,7 @@ export interface Match {
   must_have_missing: string[];
   nice_to_have_matched: string[];
   summary: string;
+  active_in_similar_role: boolean;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -69,8 +74,9 @@ export function listCandidates(): Promise<Candidate[]> {
   return request('/api/candidates');
 }
 
-export function getMatches(jobId: string): Promise<Match[]> {
-  return request(`/api/jobs/${jobId}/matches`);
+export function getMatches(jobId: string, prioritizeActiveRole = false): Promise<Match[]> {
+  const query = prioritizeActiveRole ? '?prioritize_active_role=true' : '';
+  return request(`/api/jobs/${jobId}/matches${query}`);
 }
 
 export async function uploadCandidates(files: FileList | File[]): Promise<Candidate[]> {

@@ -10,6 +10,7 @@ const state: {
   candidates: Candidate[];
   selectedJobId: string | null;
   matches: Match[];
+  prioritizeActiveRole: boolean;
   status: { kind: 'ok' | 'error'; text: string } | null;
 } = {
   tab: 'jobs',
@@ -17,6 +18,7 @@ const state: {
   candidates: [],
   selectedJobId: null,
   matches: [],
+  prioritizeActiveRole: false,
   status: null,
 };
 
@@ -49,7 +51,7 @@ async function refreshMatches(): Promise<void> {
     state.matches = [];
     return;
   }
-  state.matches = await getMatches(state.selectedJobId);
+  state.matches = await getMatches(state.selectedJobId, state.prioritizeActiveRole);
 }
 
 function render(): void {
@@ -208,7 +210,7 @@ function renderUploadTab(body: HTMLElement): void {
       ${
         state.candidates.length
           ? `<table>
-        <thead><tr><th>Name</th><th>Source file</th><th>Industry</th><th>Years</th><th>Skills</th></tr></thead>
+        <thead><tr><th>Name</th><th>Source file</th><th>Industry</th><th>Years</th><th>Current role</th><th>Skills</th></tr></thead>
         <tbody>
           ${state.candidates
             .map(
@@ -217,6 +219,11 @@ function renderUploadTab(body: HTMLElement): void {
             <td>${escapeHtml(c.source_filename)}</td>
             <td>${escapeHtml(c.industry_label || '—')}</td>
             <td>${c.years_experience ?? '—'}</td>
+            <td>${
+              c.currently_employed
+                ? `<span class="pill match">Active now${c.current_role_industry_label ? ` &middot; ${escapeHtml(c.current_role_industry_label)}` : ''}</span>`
+                : '<span class="pill">No current role detected</span>'
+            }</td>
             <td>${pillList(c.skills.slice(0, 6))}${c.skills.length > 6 ? `<span class="pill">+${c.skills.length - 6}</span>` : ''}</td>
           </tr>`
             )
@@ -261,6 +268,15 @@ function renderMatchesTab(body: HTMLElement): void {
           </select>
         </div>
       </div>
+      <label style="display:flex;align-items:center;gap:8px;margin:8px 0;font-weight:normal">
+        <input type="checkbox" id="prioritize-active-role" ${state.prioritizeActiveRole ? 'checked' : ''} />
+        Prioritize candidates currently active in a similar role
+      </label>
+      <p class="hint">
+        Surfaces someone doing this kind of work right now above someone whose only matching
+        experience is from a past, closed-out role — the same experience on paper reads very
+        differently depending on whether it's current.
+      </p>
       <button id="refresh-matches" class="primary">Rank candidates</button>
       ${statusHtml()}
     </div>
@@ -278,6 +294,7 @@ function renderMatchesTab(body: HTMLElement): void {
             <div class="score">${m.score}</div>
           </div>
           <div style="margin-top:8px">
+            ${m.active_in_similar_role ? '<span class="pill match">Currently active in a similar role</span>' : ''}
             ${pillList(m.must_have_matched, 'match')}
             ${pillList(m.must_have_missing, 'missing')}
             ${pillList(m.nice_to_have_matched)}
@@ -297,8 +314,14 @@ function renderMatchesTab(body: HTMLElement): void {
     state.selectedJobId = select.value;
   });
 
+  const activeRoleCheckbox = document.getElementById('prioritize-active-role') as HTMLInputElement | null;
+  activeRoleCheckbox?.addEventListener('change', () => {
+    state.prioritizeActiveRole = activeRoleCheckbox.checked;
+  });
+
   document.getElementById('refresh-matches')?.addEventListener('click', async () => {
     if (select) state.selectedJobId = select.value;
+    if (activeRoleCheckbox) state.prioritizeActiveRole = activeRoleCheckbox.checked;
     try {
       await refreshMatches();
       state.status = { kind: 'ok', text: `Ranked ${state.matches.length} candidate(s).` };

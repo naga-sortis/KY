@@ -33,6 +33,10 @@ class CandidateOut(BaseModel):
     years_experience: int | None
     industry_key: str | None
     industry_label: str | None
+    currently_employed: bool
+    current_role_skills: list[str]
+    current_role_industry_key: str | None
+    current_role_industry_label: str | None
     created_at: datetime
 
 
@@ -44,3 +48,4 @@ class MatchOut(BaseModel):
     must_have_missing: list[str]
     nice_to_have_matched: list[str]
     summary: str
+    active_in_similar_role: bool

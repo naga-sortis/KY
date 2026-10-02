@@ -11,6 +11,7 @@ from . import models, schemas
 from .db import get_db, init_db
 from .matching import ScoringProfile, rank_candidates
 from .parsing import CandidateRecord
+from .rubrics import industry_by_key
 from .segmentation import segment_and_parse_file
 from .storage import get_storage
 
@@ -95,6 +96,10 @@ async def upload_candidates(files: list[UploadFile], db: Session = Depends(get_d
                 years_experience=record.years_experience,
                 industry_key=record.industry.key if record.industry else None,
                 industry_label=record.industry.label if record.industry else None,
+                currently_employed=record.currently_employed,
+                current_role_skills=record.current_role_skills,
+                current_role_industry_key=record.current_role_industry.key if record.current_role_industry else None,
+                current_role_industry_label=record.current_role_industry.label if record.current_role_industry else None,
                 raw_text=record.raw_text,
             )
             db.add(candidate)
@@ -114,7 +119,7 @@ def list_candidates(db: Session = Depends(get_db)):
 # ---------- Matching ----------
 
 @app.get("/api/jobs/{job_id}/matches", response_model=list[schemas.MatchOut])
-def get_matches(job_id: str, db: Session = Depends(get_db)):
+def get_matches(job_id: str, prioritize_active_role: bool = False, db: Session = Depends(get_db)):
     job = db.get(models.Job, job_id)
     if not job:
         raise HTTPException(404, "Job not found")
@@ -129,6 +134,9 @@ def get_matches(job_id: str, db: Session = Depends(get_db)):
             skills=c.skills,
             years_experience=c.years_experience,
             industry=None,
+            currently_employed=c.currently_employed,
+            current_role_skills=c.current_role_skills or [],
+            current_role_industry=industry_by_key(c.current_role_industry_key),
         )
         for c in candidates
     ]
@@ -140,6 +148,10 @@ def get_matches(job_id: str, db: Session = Depends(get_db)):
         must_have_skills=tuple(job.must_have_skills),
         nice_to_have_skills=tuple(job.nice_to_have_skills),
         location=job.location,
+        # Opt-in: pushes candidates who are *currently* working in a role like
+        # this one above those whose only match is stale resume history,
+        # without changing anyone's score when the caller doesn't ask for it.
+        active_role_bonus=0.15 if prioritize_active_role else 0.0,
     )
 
     ranked = rank_candidates(job.description, records, profile)
@@ -152,6 +164,7 @@ def get_matches(job_id: str, db: Session = Depends(get_db)):
             must_have_missing=r.must_have_missing,
             nice_to_have_matched=r.nice_to_have_matched,
             summary=r.summary,
+            active_in_similar_role=r.active_in_similar_role,
         )
         for r in ranked
     ]

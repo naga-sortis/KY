@@ -137,6 +137,14 @@ INDUSTRIES: list[Industry] = [
 ALL_KEYWORDS: list[str] = sorted({kw for ind in INDUSTRIES for kw in ind.keywords})
 
 
+def industry_by_key(key: str | None) -> Industry | None:
+    """Reconstructs an Industry from its stored key -- used when rehydrating a
+    candidate from the DB, which only persists key/label, not the full keyword tuple."""
+    if not key:
+        return None
+    return next((ind for ind in INDUSTRIES if ind.key == key), None)
+
+
 def detect_industry(text: str) -> Industry:
     """Best-effort industry match by keyword frequency — same approach as KY's detectIndustry()."""
     lowered = text.lower()

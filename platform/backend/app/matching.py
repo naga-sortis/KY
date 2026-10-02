@@ -26,6 +26,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from .parsing import CandidateRecord
+from .rubrics import detect_industry
 
 
 @dataclass
@@ -38,6 +39,11 @@ class ScoringProfile:
     must_have_skills: tuple[str, ...] = ()
     nice_to_have_skills: tuple[str, ...] = ()
     location: str | None = None
+    # Extra points (0-1 scale, added before the final 0-100 clip) for a
+    # candidate who is not just a skill match on paper but *currently*
+    # working in a role like this one. Defaults to 0 so existing callers
+    # that don't ask for it get the exact same scores as before.
+    active_role_bonus: float = 0.0
 
 
 @dataclass
@@ -49,6 +55,10 @@ class MatchExplanation:
     must_have_missing: list[str] = field(default_factory=list)
     nice_to_have_matched: list[str] = field(default_factory=list)
     summary: str = ""
+    # True when the candidate is both currently employed and that current
+    # role's own skills/industry line up with this job -- the "HR brain"
+    # distinction between "has done this" and "is doing this right now."
+    active_in_similar_role: bool = False
 
 
 def semantic_scores(job_description: str, candidate_texts: list[str]) -> list[float]:
@@ -76,6 +86,8 @@ def rank_candidates(
     profile: ScoringProfile,
 ) -> list[MatchExplanation]:
     sims = semantic_scores(job_description, [c.raw_text for c in candidates])
+    job_industry = detect_industry(job_description)
+    target_skills_lower = {s.lower() for s in (*profile.must_have_skills, *profile.nice_to_have_skills)}
 
     results: list[MatchExplanation] = []
     for i, (candidate, sem_score) in enumerate(zip(candidates, sims)):
@@ -89,11 +101,20 @@ def rank_candidates(
             len(nice_matched) / len(profile.nice_to_have_skills) if profile.nice_to_have_skills else 1.0
         )
 
+        current_skills_lower = {s.lower() for s in candidate.current_role_skills}
+        skill_overlap_now = bool(current_skills_lower & target_skills_lower)
+        industry_match_now = bool(
+            candidate.current_role_industry and candidate.current_role_industry.key == job_industry.key
+        )
+        active_in_similar_role = candidate.currently_employed and (skill_overlap_now or industry_match_now)
+
         blended = (
             profile.semantic_weight * sem_score
             + profile.must_have_weight * must_coverage
             + profile.nice_to_have_weight * nice_coverage
         )
+        if active_in_similar_role:
+            blended += profile.active_role_bonus
         score = round(float(np.clip(blended, 0, 1)) * 100, 1)
 
         summary_bits = []
@@ -102,6 +123,12 @@ def rank_candidates(
         if must_missing:
             summary_bits.append(f"missing {', '.join(must_missing)}")
         summary_bits.append(f"{round(sem_score * 100)}% text similarity to the JD")
+        if active_in_similar_role:
+            summary_bits.append("currently active in a similar role")
+        elif candidate.currently_employed:
+            summary_bits.append("currently employed, but not in a similar role")
+        else:
+            summary_bits.append("no current role detected in this resume")
         summary = "; ".join(summary_bits)
 
         results.append(
@@ -113,6 +140,7 @@ def rank_candidates(
                 must_have_missing=must_missing,
                 nice_to_have_matched=nice_matched,
                 summary=summary,
+                active_in_similar_role=active_in_similar_role,
             )
         )
 

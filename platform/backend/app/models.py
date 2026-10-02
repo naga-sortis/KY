@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, Float, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -45,5 +45,9 @@ class Candidate(Base):
     years_experience: Mapped[int | None] = mapped_column(Integer, nullable=True)
     industry_key: Mapped[str | None] = mapped_column(String, nullable=True)
     industry_label: Mapped[str | None] = mapped_column(String, nullable=True)
+    currently_employed: Mapped[bool] = mapped_column(Boolean, default=False)
+    current_role_skills: Mapped[list] = mapped_column(JSON, default=list)
+    current_role_industry_key: Mapped[str | None] = mapped_column(String, nullable=True)
+    current_role_industry_label: Mapped[str | None] = mapped_column(String, nullable=True)
     raw_text: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

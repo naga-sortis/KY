@@ -82,6 +82,36 @@ def test_upload_multi_cv_pdf_and_rank_against_job():
     assert "Kubernetes" in matches[0]["must_have_matched"]
 
 
+def test_prioritize_active_role_param_is_opt_in_and_adds_the_new_fields():
+    job_resp = client.post(
+        "/api/jobs",
+        json={
+            "title": "Senior Software Engineer II",
+            "description": "We need a Senior Software Engineer with Kubernetes, AWS and CI/CD experience.",
+            "must_have_skills": ["Kubernetes", "AWS"],
+            "nice_to_have_skills": ["Mentoring"],
+        },
+    )
+    job_id = job_resp.json()["id"]
+
+    pdf_bytes = make_pdf([CANDIDATE_A, CANDIDATE_B])
+    upload_resp = client.post(
+        "/api/candidates/upload",
+        files=[("files", ("bulk_export_2.pdf", pdf_bytes, "application/pdf"))],
+    )
+    assert upload_resp.status_code == 200
+    for c in upload_resp.json():
+        assert "currently_employed" in c
+        assert "current_role_skills" in c
+
+    default_matches = client.get(f"/api/jobs/{job_id}/matches").json()
+    boosted_matches = client.get(f"/api/jobs/{job_id}/matches?prioritize_active_role=true").json()
+    assert all("active_in_similar_role" in m for m in default_matches)
+    # Alex Morgan (current role: software, matches the JD) should be flagged active.
+    alex = next(m for m in boosted_matches if m["candidate"]["name"] == "Alex Morgan")
+    assert alex["active_in_similar_role"] is True
+
+
 def test_unsupported_file_type_rejected():
     resp = client.post(
         "/api/candidates/upload",
